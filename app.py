@@ -6,9 +6,9 @@ from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_ollama import OllamaEmbeddings, ChatOllama
 from langchain_chroma import Chroma
 from langchain_classic.chains.retrieval import create_retrieval_chain
-from langchain_classic.chains.combine_documents import create_stuff_documents_chain
-from langchain_classic.chains.history_aware_retriever import create_history_aware_retriever
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain.chains.retrieval import create_retrieval_chain
+from langchain.chains.combine_documents import create_stuff_documents_chain
+from langchain.chains.history_aware_retriever import create_history_aware_retriever
 from langchain_core.messages import HumanMessage, AIMessage
 
 # 1. UI Configuration & Extreme Custom CSS
@@ -84,7 +84,7 @@ with st.sidebar:
         st.session_state.chat_history = []
         st.session_state.ui_messages = []
         st.rerun()
-        
+
 # 3. Core Logic Functions
 @st.cache_resource
 def get_vectorstore():
