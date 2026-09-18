@@ -3,12 +3,13 @@ import tempfile
 import os
 from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
-from langchain_ollama import OllamaEmbeddings, ChatOllama
+from langchain_huggingface import HuggingFaceEmbeddings  # Cloud Embeddings
+from langchain_groq import ChatGroq                    # Cloud LLM
 from langchain_chroma import Chroma
-from langchain_classic.chains.retrieval import create_retrieval_chain
 from langchain.chains.retrieval import create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain.chains.history_aware_retriever import create_history_aware_retriever
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_core.messages import HumanMessage, AIMessage
 
 # 1. UI Configuration & Extreme Custom CSS
@@ -34,7 +35,7 @@ st.markdown("""
         font-weight: 600;
         text-align: center;
         margin-bottom: 0.2rem;
-        color: #f1f5f9; /* Adjust to #1e293b if using light theme */
+        color: #f1f5f9; 
     }
     .sub-greeting {
         font-size: 1.1rem;
@@ -69,28 +70,20 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# 2. Left Sidebar (Mimicking the History/Nav panel)
 # 2. Left Sidebar (Clean Navigation)
 with st.sidebar:
     st.subheader("NovaChat AI")
     
-    # Optional: A button to start a fresh chat in the future
     st.button("➕ New Chat", use_container_width=True)
     
     st.divider()
     
-    # Keep the reset button to clear the AI's memory
     if st.button("🗑️ Reset Memory", use_container_width=True):
         st.session_state.chat_history = []
         st.session_state.ui_messages = []
         st.rerun()
 
 # 3. Core Logic Functions
-@st.cache_resource
-def get_vectorstore():
-    # Placeholder for persistent DB
-    return None
-
 def process_pdf(file):
     with tempfile.NamedTemporaryFile(delete=False, suffix=".pdf") as tmp_file:
         tmp_file.write(file.getvalue())
@@ -103,7 +96,8 @@ def process_pdf(file):
     text_splitter = RecursiveCharacterTextSplitter(chunk_size=1000, chunk_overlap=200)
     chunks = text_splitter.split_documents(documents)
 
-    embeddings = OllamaEmbeddings(model="nomic-embed-text")
+    # Use HuggingFace for Cloud Embeddings
+    embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
     vectorstore = Chroma(embedding_function=embeddings)
     
     batch_size = 100
@@ -115,7 +109,12 @@ def process_pdf(file):
 
 def create_rag_chain(vectorstore):
     retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
-    llm = ChatOllama(model="llama3.2")
+    
+    # Use Groq for Cloud LLM
+    llm = ChatGroq(
+        api_key=st.secrets["GROQ_API_KEY"], 
+        model="llama-3.1-8b-instant"
+    )
 
     contextualize_q_prompt = ChatPromptTemplate.from_messages([
         ("system", "Given a chat history and the latest user question formulate a standalone question. Do NOT answer the question, just reformulate it if needed."),
@@ -166,12 +165,10 @@ with doc_col:
 
 # --- CENTER COLUMN: Chat Interface ---
 with chat_col:
-    # Show greeting and suggestion chips if chat is empty
     if len(st.session_state.ui_messages) == 0:
         st.markdown('<div class="greeting-text">Hello Chado,</div>', unsafe_allow_html=True)
         st.markdown('<div class="sub-greeting">Ask me anything. I\'m here to help.</div>', unsafe_allow_html=True)
         
-        # Suggestion Chips Layout
         chip_col1, chip_col2 = st.columns(2)
         with chip_col1:
             st.button("📄 Summarize this document", use_container_width=True)
@@ -180,7 +177,6 @@ with chat_col:
             st.button("⚡ Extract key points", use_container_width=True)
             st.button("📝 Help with a project", use_container_width=True)
     
-    # Render Chat History
     else:
         for msg in st.session_state.ui_messages:
             with st.chat_message(msg["role"]):
@@ -193,7 +189,6 @@ with chat_col:
                             if i < len(msg["sources"]) - 1:
                                 st.divider()
 
-    # Chat Input Box
     user_question = st.chat_input("Type a message...")
 
     if user_question:
@@ -239,4 +234,4 @@ with chat_col:
                 "content": ai_answer, 
                 "sources": extracted_sources
             })
-            st.rerun() # Force re-render to hide the initial greeting
+            st.rerun()
