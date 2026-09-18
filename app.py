@@ -5,7 +5,7 @@ from langchain_community.document_loaders import PyPDFLoader
 from langchain_text_splitters import RecursiveCharacterTextSplitter
 from langchain_huggingface import HuggingFaceEmbeddings  # Cloud Embeddings
 from langchain_groq import ChatGroq                    # Cloud LLM
-from langchain_chroma import Chroma
+from langchain_community.vectorstores import FAISS
 from langchain.chains.retrieval import create_retrieval_chain
 from langchain.chains.combine_documents import create_stuff_documents_chain
 from langchain.chains.history_aware_retriever import create_history_aware_retriever
@@ -98,12 +98,9 @@ def process_pdf(file):
 
     # Use HuggingFace for Cloud Embeddings
     embeddings = HuggingFaceEmbeddings(model_name="all-MiniLM-L6-v2")
-    vectorstore = Chroma(embedding_function=embeddings)
     
-    batch_size = 100
-    for i in range(0, len(chunks), batch_size):
-        batch = chunks[i:i + batch_size]
-        vectorstore.add_documents(batch)
+    # FAISS runs entirely in memory and bypasses the SQLite issue!
+    vectorstore = FAISS.from_documents(documents=chunks, embedding=embeddings)
         
     return vectorstore
 
