@@ -113,7 +113,7 @@ def create_rag_chain(vectorstore):
     # Use Groq for Cloud LLM
     llm = ChatGroq(
         api_key=st.secrets["GROQ_API_KEY"], 
-        model="llama-3.1-8b-instant"
+        model="llama3-8b-8192"
     )
 
     contextualize_q_prompt = ChatPromptTemplate.from_messages([
